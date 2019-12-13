@@ -16,40 +16,44 @@
 
 package io.pivotal;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.health.CompositeHealthIndicator;
-import org.springframework.boot.actuate.health.HealthAggregator;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.CompositeReactiveHealthContributor;
+import org.springframework.boot.actuate.health.NamedContributor;
+import org.springframework.boot.actuate.health.ReactiveHealthContributor;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 @Component
-final class MutableCompositeHealthIndicator extends CompositeHealthIndicator {
+final class MutableCompositeHealthContributor implements CompositeReactiveHealthContributor {
 
     private final Map<String, MutableHealthIndicator> indicators = new HashMap<>(2);
 
-    @Autowired
-    public MutableCompositeHealthIndicator(HealthAggregator healthAggregator) {
-        super(healthAggregator);
-
+    public MutableCompositeHealthContributor() {
         MutableHealthIndicator alpha = new MutableHealthIndicator();
         this.indicators.put("alpha", alpha);
-        addHealthIndicator("alpha", alpha);
 
         MutableHealthIndicator bravo = new MutableHealthIndicator();
         this.indicators.put("bravo", bravo);
-        addHealthIndicator("bravo", bravo);
     }
 
-    public MutableCompositeHealthIndicator(HealthAggregator healthAggregator, Map<String, HealthIndicator> indicators) {
-        super(healthAggregator, indicators);
+    @Override
+    public ReactiveHealthContributor getContributor(String name) {
+        return this.indicators.get(name);
     }
 
-    void mutate(String name, Status status, Map<String, Object> details) {
-        this.indicators.get(name).mutate(status, details);
+    @Override
+    public Iterator<NamedContributor<ReactiveHealthContributor>> iterator() {
+        return this.indicators.entrySet().stream()
+            .map(entry -> NamedContributor.of(entry.getKey(), (ReactiveHealthContributor) entry.getValue()))
+            .iterator();
+    }
+
+    Mono<Void> mutate(String name, Status status, Map<String, Object> details) {
+        return this.indicators.get(name).mutate(status, details);
     }
 
 }

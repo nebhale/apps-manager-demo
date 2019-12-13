@@ -22,29 +22,30 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
 @RestController
 final class HealthController {
 
-    private final MutableCompositeHealthIndicator mutableCompositeHealthIndicator;
+    private final MutableCompositeHealthContributor mutableCompositeHealthContributor;
 
     private final MutableHealthIndicator mutableHealthIndicator;
 
-    HealthController(MutableHealthIndicator mutableHealthIndicator, MutableCompositeHealthIndicator mutableCompositeHealthIndicator) {
+    HealthController(MutableHealthIndicator mutableHealthIndicator, MutableCompositeHealthContributor mutableCompositeHealthContributor) {
         this.mutableHealthIndicator = mutableHealthIndicator;
-        this.mutableCompositeHealthIndicator = mutableCompositeHealthIndicator;
+        this.mutableCompositeHealthContributor = mutableCompositeHealthContributor;
     }
 
     @PostMapping("/health/mutate")
-    void mutate(@RequestParam Status status, @RequestBody Map<String, Object> details) {
-        this.mutableHealthIndicator.mutate(status, details);
+    Mono<Void> mutate(@RequestParam Status status, @RequestBody Map<String, Object> details) {
+        return this.mutableHealthIndicator.mutate(status, details);
     }
 
     @PostMapping("/health/composite/{name}/mutate")
-    void mutate(@PathVariable String name, @RequestParam Status status, @RequestBody Map<String, Object> details) {
-        this.mutableCompositeHealthIndicator.mutate(name, status, details);
+    Mono<Void> mutate(@PathVariable String name, @RequestParam Status status, @RequestBody Map<String, Object> details) {
+        return this.mutableCompositeHealthContributor.mutate(name, status, details);
     }
 
 }
